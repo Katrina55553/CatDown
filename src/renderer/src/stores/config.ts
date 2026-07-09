@@ -22,13 +22,15 @@ declare global {
 export const useConfigStore = defineStore('config', () => {
   const config = ref<AppConfig>({ ...defaultConfig })
   const holidays = ref<string[]>([])
+  const holidayEntries = ref<HolidayEntry[]>([])
   const loaded = ref(false)
 
   async function loadConfig(): Promise<void> {
     try {
       config.value = await window.catdown.getConfig()
-      const holidayEntries = await window.catdown.getHolidays()
-      holidays.value = holidayEntries.map((h) => h.date)
+      const entries = await window.catdown.getHolidays()
+      holidayEntries.value = entries
+      holidays.value = entries.map((h) => h.date)
       loaded.value = true
     } catch (err) {
       console.error('加载配置失败:', err)
@@ -48,11 +50,12 @@ export const useConfigStore = defineStore('config', () => {
   async function refreshHolidays(): Promise<void> {
     try {
       const entries = await window.catdown.getHolidays()
+      holidayEntries.value = entries
       holidays.value = entries.map((h) => h.date)
     } catch (err) {
       console.error('加载节假日失败:', err)
     }
   }
 
-  return { config, holidays, loaded, loadConfig, updateConfig, refreshHolidays }
+  return { config, holidays, holidayEntries, loaded, loadConfig, updateConfig, refreshHolidays }
 })

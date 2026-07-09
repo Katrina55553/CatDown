@@ -68,6 +68,15 @@ export interface HolidayEntry {
   name: string
 }
 
+// 收入计算结果（从 income.ts 重新导出）
+export type { IncomeResult } from './income'
+
+// 发薪日计算结果（从 payday.ts 重新导出）
+export type { PaydayResult } from './payday'
+
+// 辅助卡片计算结果（从 auxiliary.ts 重新导出）
+export type { FridayResult, NextHolidayResult } from './auxiliary'
+
 // IPC 通道名称
 export const IPC_CHANNELS = {
   GET_CONFIG: 'config:get',

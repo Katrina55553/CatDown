@@ -2,26 +2,51 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useConfigStore } from './stores/config'
 import { calculateCountdown, buildEngineConfig } from '@shared/engine'
-import type { CountdownResult } from '@shared/types'
+import { calculateTodayIncome } from '@shared/income'
+import { calculatePayday } from '@shared/payday'
+import { calculateFriday, findNextHoliday } from '@shared/auxiliary'
+import type { CountdownResult, IncomeResult, PaydayResult, FridayResult, NextHolidayResult } from '@shared/types'
 
 const configStore = useConfigStore()
 const countdown = ref<CountdownResult | null>(null)
+const income = ref<IncomeResult | null>(null)
+const payday = ref<PaydayResult | null>(null)
+const friday = ref<FridayResult | null>(null)
+const nextHoliday = ref<NextHolidayResult | null>(null)
 let timer: ReturnType<typeof setInterval> | null = null
 
-// 工作日标签
 const weekdayLabels = ['日', '一', '二', '三', '四', '五', '六']
 
 function pad(n: number): string {
   return String(n).padStart(2, '0')
 }
 
-function updateCountdown(): void {
+function updateAll(): void {
   if (!configStore.loaded) return
   const engineConfig = buildEngineConfig(configStore.config, configStore.holidays)
+
   countdown.value = calculateCountdown({
     now: new Date(),
     config: engineConfig
   })
+
+  income.value = calculateTodayIncome({
+    now: new Date(),
+    monthlySalary: configStore.config.monthlySalary,
+    config: engineConfig,
+    decimals: configStore.config.incomeDecimals
+  })
+
+  payday.value = calculatePayday({
+    now: new Date(),
+    payday: configStore.config.payday,
+    advanceOnHoliday: configStore.config.paydayAdvanceOnHoliday,
+    config: engineConfig
+  })
+
+  friday.value = calculateFriday(new Date(), engineConfig)
+
+  nextHoliday.value = findNextHoliday(new Date(), configStore.holidayEntries)
 }
 
 const displayText = computed<string>(() => {
@@ -34,7 +59,6 @@ const displayText = computed<string>(() => {
   return `${r.label} ${pad(r.hours)}:${pad(r.minutes)}:${pad(r.seconds)}`
 })
 
-// 切换工作日选中状态
 async function toggleWorkday(day: number): Promise<void> {
   const workdays = [...configStore.config.workdays]
   const idx = workdays.indexOf(day)
@@ -45,32 +69,65 @@ async function toggleWorkday(day: number): Promise<void> {
     workdays.sort()
   }
   await configStore.updateConfig({ workdays })
-  updateCountdown()
+  updateAll()
 }
 
-// 工作时间变更
 async function onStartTimeChange(e: Event): Promise<void> {
-  const value = (e.target as HTMLSelectElement).value
-  await configStore.updateConfig({ startTime: value })
-  updateCountdown()
+  await configStore.updateConfig({ startTime: (e.target as HTMLSelectElement).value })
+  updateAll()
 }
 
 async function onEndTimeChange(e: Event): Promise<void> {
-  const value = (e.target as HTMLSelectElement).value
-  await configStore.updateConfig({ endTime: value })
-  updateCountdown()
+  await configStore.updateConfig({ endTime: (e.target as HTMLSelectElement).value })
+  updateAll()
 }
 
-// 校验：下班时间是否早于上班时间
+async function onSalaryInput(e: Event): Promise<void> {
+  const value = Number((e.target as HTMLInputElement).value)
+  await configStore.updateConfig({ monthlySalary: isNaN(value) ? 0 : value })
+  updateAll()
+}
+
+async function onDecimalsChange(e: Event): Promise<void> {
+  const value = Number((e.target as HTMLSelectElement).value)
+  await configStore.updateConfig({ incomeDecimals: value })
+  updateAll()
+}
+
+async function toggleIncomeCard(): Promise<void> {
+  await configStore.updateConfig({ showIncome: !configStore.config.showIncome })
+}
+
+async function togglePaydayCard(): Promise<void> {
+  await configStore.updateConfig({ showPayday: !configStore.config.showPayday })
+}
+
+async function onPaydayInput(e: Event): Promise<void> {
+  const value = Number((e.target as HTMLInputElement).value)
+  const clamped = Math.max(1, Math.min(31, isNaN(value) ? 1 : value))
+  await configStore.updateConfig({ payday: clamped })
+  updateAll()
+}
+
+async function togglePaydayAdvance(): Promise<void> {
+  await configStore.updateConfig({ paydayAdvanceOnHoliday: !configStore.config.paydayAdvanceOnHoliday })
+  updateAll()
+}
+
+async function toggleFridayCard(): Promise<void> {
+  await configStore.updateConfig({ showFriday: !configStore.config.showFriday })
+}
+
+async function toggleHolidayCard(): Promise<void> {
+  await configStore.updateConfig({ showHoliday: !configStore.config.showHoliday })
+}
+
 const timeValidationError = computed<string>(() => {
   const { startTime, endTime } = configStore.config
-  if (startTime >= endTime) {
-    return '下班时间不能早于上班时间'
-  }
+  if (startTime >= endTime) return '下班时间不能早于上班时间'
   return ''
 })
 
-// 生成时间选项（每30分钟）
 const timeOptions: string[] = (() => {
   const options: string[] = []
   for (let h = 0; h < 24; h++) {
@@ -83,8 +140,8 @@ const timeOptions: string[] = (() => {
 
 onMounted(async () => {
   await configStore.loadConfig()
-  updateCountdown()
-  timer = setInterval(updateCountdown, 1000)
+  updateAll()
+  timer = setInterval(updateAll, 1000)
 })
 
 onUnmounted(() => {
@@ -97,6 +154,42 @@ onUnmounted(() => {
     <!-- 左侧预览区 -->
     <div class="preview-panel">
       <div class="countdown-display">{{ displayText }}</div>
+
+      <!-- 今天收入卡片 -->
+      <div
+        v-if="configStore.config.showIncome && income?.shouldShow"
+        class="income-card"
+      >
+        <div class="income-label">今天已赚</div>
+        <div class="income-amount">{{ income.formatted }}</div>
+        <div class="income-hint">{{ income.hint }}</div>
+      </div>
+
+      <!-- 收入卡片占位 -->
+      <div
+        v-else-if="configStore.config.showIncome && !income?.shouldShow && income"
+        class="income-card placeholder"
+      >
+        <div class="income-hint">{{ income.hint }}</div>
+      </div>
+
+      <!-- 发薪日卡片 -->
+      <div v-if="configStore.config.showPayday && payday" class="info-card">
+        <div class="info-label">发薪日</div>
+        <div class="info-value">{{ payday.formatted }}</div>
+      </div>
+
+      <!-- 距离周五卡片 -->
+      <div v-if="configStore.config.showFriday && friday" class="info-card">
+        <div class="info-label">距离周五</div>
+        <div class="info-value">{{ friday.formatted }}</div>
+      </div>
+
+      <!-- 下一个节日卡片 -->
+      <div v-if="configStore.config.showHoliday && nextHoliday?.found" class="info-card">
+        <div class="info-label">{{ nextHoliday.name }}</div>
+        <div class="info-value">{{ nextHoliday.formatted }}</div>
+      </div>
     </div>
 
     <!-- 右侧配置面板 -->
@@ -139,6 +232,94 @@ onUnmounted(() => {
           {{ timeValidationError }}
         </div>
       </div>
+
+      <!-- 月薪与收入设置 -->
+      <div class="config-section">
+        <div class="config-label">
+          <label class="checkbox-row">
+            <input
+              type="checkbox"
+              :checked="configStore.config.showIncome"
+              @change="toggleIncomeCard"
+            />
+            <span>今天收入</span>
+          </label>
+        </div>
+        <input
+          type="number"
+          class="salary-input"
+          placeholder="输入月薪（元）"
+          :value="configStore.config.monthlySalary || ''"
+          min="0"
+          step="100"
+          @input="onSalaryInput"
+        />
+        <div class="config-label" style="margin-top: 8px;">小数位数</div>
+        <select
+          class="time-select"
+          :value="configStore.config.incomeDecimals"
+          @change="onDecimalsChange"
+        >
+          <option :value="0">0 位（¥978）</option>
+          <option :value="2">2 位（¥978.40）</option>
+          <option :value="3">3 位（¥978.395）</option>
+        </select>
+      </div>
+
+      <!-- 发薪日设置 -->
+      <div class="config-section">
+        <div class="config-label">
+          <label class="checkbox-row">
+            <input
+              type="checkbox"
+              :checked="configStore.config.showPayday"
+              @change="togglePaydayCard"
+            />
+            <span>发薪日</span>
+          </label>
+        </div>
+        <div class="payday-row">
+          <span class="payday-text">每月</span>
+          <input
+            type="number"
+            class="payday-input"
+            :value="configStore.config.payday"
+            min="1"
+            max="31"
+            @input="onPaydayInput"
+          />
+          <span class="payday-text">号</span>
+        </div>
+        <label class="checkbox-row" style="margin-top: 8px;">
+          <input
+            type="checkbox"
+            :checked="configStore.config.paydayAdvanceOnHoliday"
+            @change="togglePaydayAdvance"
+          />
+          <span>遇节假日提前发</span>
+        </label>
+      </div>
+
+      <!-- 显示更多开关 -->
+      <div class="config-section">
+        <div class="config-label">显示更多</div>
+        <label class="checkbox-row">
+          <input
+            type="checkbox"
+            :checked="configStore.config.showFriday"
+            @change="toggleFridayCard"
+          />
+          <span>距离周五</span>
+        </label>
+        <label class="checkbox-row" style="margin-top: 6px;">
+          <input
+            type="checkbox"
+            :checked="configStore.config.showHoliday"
+            @change="toggleHolidayCard"
+          />
+          <span>下一个节日</span>
+        </label>
+      </div>
     </div>
   </div>
 </template>
@@ -177,10 +358,13 @@ body {
 .preview-panel {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 20px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   min-width: 200px;
+  padding: 20px;
 }
 
 .countdown-display {
@@ -190,6 +374,39 @@ body {
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   letter-spacing: 1px;
   text-align: center;
+}
+
+/* 收入卡片 */
+.income-card {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 12px 20px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.income-card.placeholder {
+  opacity: 0.6;
+}
+
+.income-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 4px;
+}
+
+.income-amount {
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffd700;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.income-hint {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 4px;
 }
 
 /* 右侧配置面板 */
@@ -213,7 +430,6 @@ body {
   letter-spacing: 0.5px;
 }
 
-/* 工作日标签 */
 .weekday-tags {
   display: flex;
   gap: 4px;
@@ -243,7 +459,6 @@ body {
   color: #ffffff;
 }
 
-/* 时间选择器 */
 .time-picker-row {
   display: flex;
   align-items: center;
@@ -275,5 +490,89 @@ body {
   margin-top: 6px;
   font-size: 12px;
   color: #e74c3c;
+}
+
+/* 复选框行 */
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.checkbox-row input[type='checkbox'] {
+  accent-color: #667eea;
+}
+
+/* 月薪输入框 */
+.salary-input {
+  width: 100%;
+  padding: 6px 8px;
+  background: #0f3460;
+  border: 1px solid #1a1a4e;
+  border-radius: 6px;
+  color: #e0e0e0;
+  font-size: 13px;
+  outline: none;
+}
+
+.salary-input:focus {
+  border-color: #667eea;
+}
+
+.salary-input::placeholder {
+  color: #555;
+}
+
+/* 信息卡片（发薪日等） */
+.info-card {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 10px 20px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.info-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 2px;
+}
+
+.info-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+/* 发薪日输入 */
+.payday-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.payday-text {
+  font-size: 13px;
+  color: #a0a0a0;
+}
+
+.payday-input {
+  width: 50px;
+  padding: 4px 6px;
+  background: #0f3460;
+  border: 1px solid #1a1a4e;
+  border-radius: 6px;
+  color: #e0e0e0;
+  font-size: 13px;
+  outline: none;
+  text-align: center;
+}
+
+.payday-input:focus {
+  border-color: #667eea;
 }
 </style>

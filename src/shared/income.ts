@@ -1,13 +1,19 @@
 import dayjs from 'dayjs'
 import type { EngineConfig } from './engine'
 import { isWorkday } from './engine'
+import type { SalaryType } from './types'
 
 /**
  * 收入计算输入
  */
 export interface IncomeInput {
   now: Date
+  /** 月薪（元），salaryType='monthly' 时使用 */
   monthlySalary: number
+  /** 日薪（元），salaryType='daily' 时使用 */
+  dailySalary: number
+  /** 薪资类型 */
+  salaryType: SalaryType
   config: EngineConfig
   decimals?: number
 }
@@ -113,31 +119,20 @@ export function calculateWorkHoursPerDay(config: EngineConfig): number {
 /**
  * 计算今天收入
  *
- * 公式：todayIncome = monthlySalary / workDaysInMonth / workHoursPerDay × workedHoursToday
+ * - 月薪模式：todayIncome = monthlySalary / workDaysInMonth / workHoursPerDay × workedHoursToday
+ * - 日薪模式：todayIncome = dailySalary / workHoursPerDay × workedHoursToday
  */
 export function calculateTodayIncome(input: IncomeInput): IncomeResult {
-  const { now, monthlySalary, config, decimals = 2 } = input
+  const { now, monthlySalary, dailySalary, salaryType, config, decimals = 2 } = input
   const current = dayjs(now)
-
-  // 月薪未设置
-  if (!monthlySalary || monthlySalary <= 0) {
-    return {
-      todayIncome: 0,
-      formatted: '¥0.00',
-      workDaysInMonth: 0,
-      workHoursPerDay: 0,
-      workedHoursToday: 0,
-      shouldShow: false,
-      hint: '请先设置月薪'
-    }
-  }
 
   const workDaysInMonth = countWorkDaysInMonth(current, config)
   const workHoursPerDay = calculateWorkHoursPerDay(config)
   const workedHoursToday = calculateWorkedHoursToday(current, config)
 
-  // 避免除以 0
-  if (workDaysInMonth === 0 || workHoursPerDay === 0) {
+  // 根据薪资类型判断是否已设置
+  const salaryValue = salaryType === 'monthly' ? monthlySalary : dailySalary
+  if (!salaryValue || salaryValue <= 0) {
     return {
       todayIncome: 0,
       formatted: '¥0.00',
@@ -145,12 +140,42 @@ export function calculateTodayIncome(input: IncomeInput): IncomeResult {
       workHoursPerDay,
       workedHoursToday,
       shouldShow: false,
-      hint: '工作日或工作时长配置有误'
+      hint: salaryType === 'monthly' ? '请先设置月薪' : '请先设置日薪'
     }
   }
 
-  const todayIncome =
-    (monthlySalary / workDaysInMonth / workHoursPerDay) * workedHoursToday
+  // 避免除以 0
+  if (workHoursPerDay === 0) {
+    return {
+      todayIncome: 0,
+      formatted: '¥0.00',
+      workDaysInMonth,
+      workHoursPerDay,
+      workedHoursToday,
+      shouldShow: false,
+      hint: '工作时长配置有误'
+    }
+  }
+
+  // 月薪模式还需要工作日天数
+  if (salaryType === 'monthly' && workDaysInMonth === 0) {
+    return {
+      todayIncome: 0,
+      formatted: '¥0.00',
+      workDaysInMonth,
+      workHoursPerDay,
+      workedHoursToday,
+      shouldShow: false,
+      hint: '工作日配置有误'
+    }
+  }
+
+  let todayIncome: number
+  if (salaryType === 'monthly') {
+    todayIncome = (monthlySalary / workDaysInMonth / workHoursPerDay) * workedHoursToday
+  } else {
+    todayIncome = (dailySalary / workHoursPerDay) * workedHoursToday
+  }
 
   const formatted = `¥${todayIncome.toFixed(decimals)}`
 
@@ -161,6 +186,8 @@ export function calculateTodayIncome(input: IncomeInput): IncomeResult {
     workHoursPerDay,
     workedHoursToday,
     shouldShow: true,
-    hint: '按当月工作日折算，未扣税/五险一金，仅供参考'
+    hint: salaryType === 'monthly'
+      ? '按当月工作日折算，未扣税/五险一金，仅供参考'
+      : '按今日工作时长折算，未扣税/五险一金，仅供参考'
   }
 }

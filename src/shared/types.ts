@@ -1,4 +1,6 @@
 // 用户配置类型定义
+export type SalaryType = 'monthly' | 'daily'
+
 export interface AppConfig {
   // 组件名称
   widgetName: string
@@ -10,6 +12,10 @@ export interface AppConfig {
   endTime: string
   // 月薪（元），0 表示未设置
   monthlySalary: number
+  // 日薪（元），0 表示未设置
+  dailySalary: number
+  // 薪资类型：月薪 or 日薪
+  salaryType: SalaryType
   // 发薪日（每月几号，1-31）
   payday: number
   // 遇节假日是否提前发
@@ -87,7 +93,7 @@ export const defaultGradient: GradientColor = {
 
 export const defaultFontColor: FontColor = {
   type: 'solid',
-  color: '#ffffff'
+  color: '#fff8f0'
 }
 
 // ============ 背景 ============
@@ -107,7 +113,7 @@ export interface BackgroundConfig {
 
 export const defaultBackground: BackgroundConfig = {
   mode: 'color',
-  color: '#667eea',
+  color: '#ff7e8b',
   imagePath: '',
   cropRatio: '16:9'
 }
@@ -118,6 +124,8 @@ export const defaultConfig: AppConfig = {
   startTime: '09:00',
   endTime: '18:00',
   monthlySalary: 0,
+  dailySalary: 0,
+  salaryType: 'monthly',
   payday: 10,
   paydayAdvanceOnHoliday: true,
   showPayday: true,

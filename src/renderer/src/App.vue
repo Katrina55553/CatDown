@@ -8,7 +8,7 @@ import { calculatePayday } from '@shared/payday'
 import { calculateFriday, findNextHoliday } from '@shared/auxiliary'
 import { fontColorToCssColor, sanitizeFontColor } from '@shared/font-color'
 import { defaultFontColor } from '@shared/types'
-import type { CountdownResult, IncomeResult, PaydayResult, FridayResult, NextHolidayResult, FontColor, BackgroundConfig } from '@shared/types'
+import type { CountdownResult, IncomeResult, PaydayResult, FridayResult, NextHolidayResult, FontColor, BackgroundConfig, SalaryType } from '@shared/types'
 import ColorPicker from './components/ColorPicker.vue'
 import BackgroundPicker from './components/BackgroundPicker.vue'
 import CatIllustration from './components/CatIllustration.vue'
@@ -39,6 +39,8 @@ function updateAll(): void {
   income.value = calculateTodayIncome({
     now: new Date(),
     monthlySalary: configStore.config.monthlySalary,
+    dailySalary: configStore.config.dailySalary,
+    salaryType: configStore.config.salaryType,
     config: engineConfig,
     decimals: configStore.config.incomeDecimals
   })
@@ -142,7 +144,13 @@ async function onEndTimeChange(e: Event): Promise<void> {
 
 async function onSalaryInput(e: Event): Promise<void> {
   const value = Number((e.target as HTMLInputElement).value)
-  await configStore.updateConfig({ monthlySalary: isNaN(value) ? 0 : value })
+  const field = configStore.config.salaryType === 'monthly' ? 'monthlySalary' : 'dailySalary'
+  await configStore.updateConfig({ [field]: isNaN(value) ? 0 : value })
+  updateAll()
+}
+
+async function onSalaryTypeChange(t: SalaryType): Promise<void> {
+  await configStore.updateConfig({ salaryType: t })
   updateAll()
 }
 
@@ -312,7 +320,7 @@ onUnmounted(() => {
         />
       </div>
 
-      <!-- 月薪与收入设置 -->
+      <!-- 薪资与收入设置 -->
       <div class="config-section">
         <div class="config-label">
           <label class="checkbox-row">
@@ -324,13 +332,28 @@ onUnmounted(() => {
             <span>今天收入</span>
           </label>
         </div>
+
+        <!-- 月薪 / 日薪 切换 -->
+        <div class="seg-control salary-seg">
+          <button
+            class="seg-btn"
+            :class="{ active: configStore.config.salaryType === 'monthly' }"
+            @click="onSalaryTypeChange('monthly')"
+          >月薪</button>
+          <button
+            class="seg-btn"
+            :class="{ active: configStore.config.salaryType === 'daily' }"
+            @click="onSalaryTypeChange('daily')"
+          >日薪</button>
+        </div>
+
         <input
           type="number"
           class="salary-input"
-          placeholder="输入月薪（元）"
-          :value="configStore.config.monthlySalary || ''"
+          :placeholder="configStore.config.salaryType === 'monthly' ? '输入月薪（元）' : '输入日薪（元）'"
+          :value="(configStore.config.salaryType === 'monthly' ? configStore.config.monthlySalary : configStore.config.dailySalary) || ''"
           min="0"
-          step="100"
+          :step="configStore.config.salaryType === 'monthly' ? 100 : 10"
           @input="onSalaryInput"
         />
         <div class="config-label" style="margin-top: 8px;">小数位数</div>
@@ -460,8 +483,8 @@ body {
     Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif;
   -webkit-font-smoothing: antialiased;
   user-select: none;
-  background: #1a1a2e;
-  color: #e0e0e0;
+  background: #2b1f2a;
+  color: #f5e6e0;
 }
 
 .catdown-app {
@@ -470,7 +493,7 @@ body {
   height: 100%;
 }
 
-/* 左侧预览区 */
+/* 左侧预览区 - 温馨暖色渐变 */
 .preview-panel {
   flex: 1;
   display: flex;
@@ -478,60 +501,77 @@ body {
   align-items: center;
   justify-content: center;
   gap: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #ff9a8b 0%, #ff6a88 50%, #ff99ac 100%);
   min-width: 200px;
   padding: 20px;
+  position: relative;
+}
+
+/* 预览区柔光叠加 */
+.preview-panel::before {
+  content: '';
+  position: absolute;
+  top: 10%;
+  right: 10%;
+  width: 120px;
+  height: 120px;
+  background: radial-gradient(circle, rgba(255, 220, 180, 0.4) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
 }
 
 .countdown-display {
   font-size: 28px;
   font-weight: 700;
   color: #ffffff;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 2px 8px rgba(255, 107, 107, 0.4);
   letter-spacing: 1px;
   text-align: center;
+  position: relative;
+  z-index: 1;
 }
 
-/* 收入卡片 */
+/* 收入卡片 - 暖色磨砂玻璃 */
 .income-card {
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
   padding: 12px 20px;
   text-align: center;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 16px rgba(255, 107, 107, 0.15);
 }
 
 .income-card.placeholder {
-  opacity: 0.6;
+  opacity: 0.65;
 }
 
 .income-label {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.9);
   margin-bottom: 4px;
 }
 
 .income-amount {
   font-size: 22px;
   font-weight: 700;
-  color: #ffd700;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  color: #fff3cd;
+  text-shadow: 0 1px 4px rgba(204, 85, 0, 0.4);
 }
 
 .income-hint {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.7);
   margin-top: 4px;
 }
 
-/* 右侧配置面板 */
+/* 右侧配置面板 - 温馨暖灰背景 */
 .config-panel {
   width: 220px;
   padding: 16px;
-  background: #16213e;
+  background: #3a2a30;
   overflow-y: auto;
-  border-left: 1px solid #0f3460;
+  border-left: 1px solid rgba(255, 154, 139, 0.3);
 }
 
 .config-section {
@@ -540,7 +580,7 @@ body {
 
 .config-label {
   font-size: 12px;
-  color: #a0a0a0;
+  color: #e8c5b8;
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -555,23 +595,23 @@ body {
 .weekday-tag {
   width: 28px;
   height: 28px;
-  border: 1px solid #0f3460;
+  border: 1px solid rgba(255, 154, 139, 0.3);
   border-radius: 6px;
   background: transparent;
-  color: #a0a0a0;
+  color: #d4b5a8;
   font-size: 13px;
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .weekday-tag:hover {
-  border-color: #667eea;
+  border-color: #ff7e8b;
   color: #ffffff;
 }
 
 .weekday-tag.active {
-  background: #667eea;
-  border-color: #667eea;
+  background: #ff7e8b;
+  border-color: #ff7e8b;
   color: #ffffff;
 }
 
@@ -584,28 +624,28 @@ body {
 .time-select {
   flex: 1;
   padding: 6px 8px;
-  background: #0f3460;
-  border: 1px solid #1a1a4e;
+  background: #4a2f38;
+  border: 1px solid rgba(255, 154, 139, 0.3);
   border-radius: 6px;
-  color: #e0e0e0;
+  color: #f5e6e0;
   font-size: 13px;
   cursor: pointer;
   outline: none;
 }
 
 .time-select:focus {
-  border-color: #667eea;
+  border-color: #ff9a8b;
 }
 
 .time-separator {
-  color: #a0a0a0;
+  color: #d4b5a8;
   font-size: 13px;
 }
 
 .validation-error {
   margin-top: 6px;
   font-size: 12px;
-  color: #e74c3c;
+  color: #ff6b6b;
 }
 
 /* 复选框行 */
@@ -619,42 +659,74 @@ body {
 }
 
 .checkbox-row input[type='checkbox'] {
-  accent-color: #667eea;
+  accent-color: #ff7e8b;
 }
 
-/* 月薪输入框 */
+/* 月薪/日薪切换 */
+.seg-control {
+  display: flex;
+  gap: 4px;
+  background: #4a2f38;
+  padding: 3px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.seg-btn {
+  flex: 1;
+  padding: 6px 0;
+  border: none;
+  background: transparent;
+  color: #d4b5a8;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.seg-btn.active {
+  background: #ff7e8b;
+  color: #ffffff;
+}
+
+.seg-btn:hover:not(.active) {
+  color: #ffffff;
+}
+
+/* 薪资输入框 */
 .salary-input {
   width: 100%;
   padding: 6px 8px;
-  background: #0f3460;
-  border: 1px solid #1a1a4e;
+  background: #4a2f38;
+  border: 1px solid rgba(255, 154, 139, 0.3);
   border-radius: 6px;
-  color: #e0e0e0;
+  color: #f5e6e0;
   font-size: 13px;
   outline: none;
 }
 
 .salary-input:focus {
-  border-color: #667eea;
+  border-color: #ff9a8b;
 }
 
 .salary-input::placeholder {
-  color: #555;
+  color: #8a6a6a;
 }
 
-/* 信息卡片（发薪日等） */
+/* 信息卡片（发薪日等） - 暖色磨砂玻璃 */
 .info-card {
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
   padding: 10px 20px;
   text-align: center;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.12);
 }
 
 .info-label {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.9);
   margin-bottom: 2px;
 }
 
@@ -673,23 +745,23 @@ body {
 
 .payday-text {
   font-size: 13px;
-  color: #a0a0a0;
+  color: #e8c5b8;
 }
 
 .payday-input {
   width: 50px;
   padding: 4px 6px;
-  background: #0f3460;
-  border: 1px solid #1a1a4e;
+  background: #4a2f38;
+  border: 1px solid rgba(255, 154, 139, 0.3);
   border-radius: 6px;
-  color: #e0e0e0;
+  color: #f5e6e0;
   font-size: 13px;
   outline: none;
   text-align: center;
 }
 
 .payday-input:focus {
-  border-color: #667eea;
+  border-color: #ff9a8b;
 }
 
 /* 极简模式浮动切换按钮 */

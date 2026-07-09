@@ -11,6 +11,7 @@ import { defaultFontColor } from '@shared/types'
 import type { CountdownResult, IncomeResult, PaydayResult, FridayResult, NextHolidayResult, FontColor, BackgroundConfig } from '@shared/types'
 import ColorPicker from './components/ColorPicker.vue'
 import BackgroundPicker from './components/BackgroundPicker.vue'
+import CatIllustration from './components/CatIllustration.vue'
 
 const configStore = useConfigStore()
 const countdown = ref<CountdownResult | null>(null)
@@ -102,6 +103,14 @@ async function onBackgroundChange(bg: BackgroundConfig): Promise<void> {
   await configStore.updateConfig({ background: bg })
   // 切换/更新图片后，刷新 data URL
   await configStore.refreshBackgroundUrl()
+}
+
+async function toggleCat(): Promise<void> {
+  await configStore.updateConfig({ showCat: !configStore.config.showCat })
+}
+
+async function toggleMinimalMode(): Promise<void> {
+  await configStore.updateConfig({ minimalMode: !configStore.config.minimalMode })
 }
 
 async function toggleWorkday(day: number): Promise<void> {
@@ -200,6 +209,9 @@ onUnmounted(() => {
     <div class="preview-panel" :style="backgroundStyle">
       <div class="countdown-display" :style="fontColorStyle">{{ displayText }}</div>
 
+      <!-- 猫咪插画 -->
+      <CatIllustration v-if="configStore.config.showCat" :size="80" />
+
       <!-- 今天收入卡片 -->
       <div
         v-if="configStore.config.showIncome && income?.shouldShow"
@@ -237,8 +249,8 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- 右侧配置面板 -->
-    <div class="config-panel">
+    <!-- 右侧配置面板（极简模式时隐藏） -->
+    <div v-if="!configStore.config.minimalMode" class="config-panel">
       <div class="config-section">
         <div class="config-label">工作日</div>
         <div class="weekday-tags">
@@ -382,8 +394,37 @@ onUnmounted(() => {
           />
           <span>下一个节日</span>
         </label>
+        <label class="checkbox-row" style="margin-top: 6px;">
+          <input
+            type="checkbox"
+            :checked="configStore.config.showCat"
+            @change="toggleCat"
+          />
+          <span>猫咪插画</span>
+        </label>
+      </div>
+
+      <!-- 极简模式 -->
+      <div class="config-section">
+        <div class="config-label">模式</div>
+        <label class="checkbox-row">
+          <input
+            type="checkbox"
+            :checked="configStore.config.minimalMode"
+            @change="toggleMinimalMode"
+          />
+          <span>极简模式（隐藏配置面板）</span>
+        </label>
       </div>
     </div>
+
+    <!-- 极简模式浮动切换按钮 -->
+    <button
+      v-if="configStore.config.minimalMode"
+      class="minimal-toggle-btn"
+      title="显示配置面板"
+      @click="toggleMinimalMode"
+    >⚙</button>
   </div>
 </template>
 
@@ -637,5 +678,31 @@ body {
 
 .payday-input:focus {
   border-color: #667eea;
+}
+
+/* 极简模式浮动切换按钮 */
+.minimal-toggle-btn {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.4);
+  color: #ffffff;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, transform 0.15s;
+  z-index: 100;
+  backdrop-filter: blur(8px);
+}
+
+.minimal-toggle-btn:hover {
+  background: rgba(0, 0, 0, 0.6);
+  transform: rotate(45deg);
 }
 </style>

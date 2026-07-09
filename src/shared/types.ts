@@ -27,6 +27,65 @@ export interface AppConfig {
   minimalMode: boolean
   // 开机自启
   autoStart: boolean
+  // 字体颜色（纯色或渐变）
+  fontColor: FontColor
+}
+
+// ============ 字体颜色 / 渐变 ============
+export type FontColorType = 'solid' | 'gradient'
+
+export interface SolidColor {
+  type: 'solid'
+  /** hex 或 rgba 字符串，例如 '#ffffff' */
+  color: string
+}
+
+export interface GradientStop {
+  /** hex 或 rgba 字符串 */
+  color: string
+  /** 位置百分比 0-100 */
+  position: number
+}
+
+export type GradientType = 'linear' | 'radial'
+
+export interface GradientColor {
+  type: 'gradient'
+  gradientType: GradientType
+  /** 角度 0-360，仅 linear 使用 */
+  angle: number
+  /** 色标列表，至少 2 个 */
+  stops: GradientStop[]
+}
+
+export type FontColor = SolidColor | GradientColor
+
+/** 8 个预设颜色（最后一个为渐变入口） */
+export const PRESET_COLORS: string[] = [
+  '#ffffff',
+  '#ffd700',
+  '#ff6b6b',
+  '#ff9f43',
+  '#26de81',
+  '#00d2d3',
+  '#48dbfb',
+  '#a55eea'
+]
+
+/** 默认渐变配置 */
+export const defaultGradient: GradientColor = {
+  type: 'gradient',
+  gradientType: 'linear',
+  angle: 135,
+  stops: [
+    { color: '#667eea', position: 0 },
+    { color: '#764ba2', position: 100 }
+  ]
+}
+
+export const defaultFontColor: FontColor = {
+  type: 'solid',
+  color: '#ffffff'
 }
 
 export const defaultConfig: AppConfig = {
@@ -44,7 +103,8 @@ export const defaultConfig: AppConfig = {
   incomeDecimals: 2,
   showCat: true,
   minimalMode: false,
-  autoStart: false
+  autoStart: false,
+  fontColor: defaultFontColor
 }
 
 // 时间目标事件类型

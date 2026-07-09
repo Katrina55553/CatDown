@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
+import type { CSSProperties } from 'vue'
 import { useConfigStore } from './stores/config'
 import { calculateCountdown, buildEngineConfig } from '@shared/engine'
 import { calculateTodayIncome } from '@shared/income'
 import { calculatePayday } from '@shared/payday'
 import { calculateFriday, findNextHoliday } from '@shared/auxiliary'
-import type { CountdownResult, IncomeResult, PaydayResult, FridayResult, NextHolidayResult } from '@shared/types'
+import { fontColorToCssColor, sanitizeFontColor } from '@shared/font-color'
+import { defaultFontColor } from '@shared/types'
+import type { CountdownResult, IncomeResult, PaydayResult, FridayResult, NextHolidayResult, FontColor } from '@shared/types'
+import ColorPicker from './components/ColorPicker.vue'
 
 const configStore = useConfigStore()
 const countdown = ref<CountdownResult | null>(null)
@@ -58,6 +62,26 @@ const displayText = computed<string>(() => {
   }
   return `${r.label} ${pad(r.hours)}:${pad(r.minutes)}:${pad(r.seconds)}`
 })
+
+// 主倒计时文字颜色样式
+const fontColorStyle = computed<CSSProperties>(() => {
+  const safe = sanitizeFontColor(configStore.config.fontColor, defaultFontColor)
+  if (safe.type === 'solid') {
+    return { color: safe.color }
+  }
+  // 渐变：用 background-clip: text 实现
+  return {
+    backgroundImage: fontColorToCssColor(safe),
+    WebkitBackgroundClip: 'text',
+    backgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    color: 'transparent'
+  }
+})
+
+async function onFontColorChange(fc: FontColor): Promise<void> {
+  await configStore.updateConfig({ fontColor: fc })
+}
 
 async function toggleWorkday(day: number): Promise<void> {
   const workdays = [...configStore.config.workdays]
@@ -153,7 +177,7 @@ onUnmounted(() => {
   <div class="catdown-app">
     <!-- 左侧预览区 -->
     <div class="preview-panel">
-      <div class="countdown-display">{{ displayText }}</div>
+      <div class="countdown-display" :style="fontColorStyle">{{ displayText }}</div>
 
       <!-- 今天收入卡片 -->
       <div
@@ -231,6 +255,15 @@ onUnmounted(() => {
         <div v-if="timeValidationError" class="validation-error">
           {{ timeValidationError }}
         </div>
+      </div>
+
+      <!-- 字体颜色 -->
+      <div class="config-section">
+        <div class="config-label">字体颜色</div>
+        <ColorPicker
+          :model-value="configStore.config.fontColor"
+          @update:model-value="onFontColorChange"
+        />
       </div>
 
       <!-- 月薪与收入设置 -->

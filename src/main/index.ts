@@ -59,8 +59,8 @@ function showMainWindow(): void {
     mainWindow.show()
     mainWindow.focus()
   } else {
+    // createWindow 内部 ready-to-show 事件会自动 show 窗口
     createWindow()
-    mainWindow?.show()
   }
 }
 

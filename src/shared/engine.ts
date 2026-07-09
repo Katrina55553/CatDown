@@ -1,5 +1,5 @@
 import dayjs from 'dayjs'
-import type { AppConfig, CountdownResult, TargetEventType } from '../types'
+import type { AppConfig, CountdownResult, TargetEventType } from './types'
 
 /**
  * 引擎输入配置

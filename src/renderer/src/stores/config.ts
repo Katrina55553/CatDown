@@ -15,6 +15,14 @@ declare global {
       addHoliday: (date: string, name: string) => Promise<HolidayEntry[]>
       removeHoliday: (date: string) => Promise<HolidayEntry[]>
       resetHolidays: () => Promise<HolidayEntry[]>
+      selectBackgroundImage: () => Promise<{
+        path: string
+        size: number
+        dataUrl: string
+        ext: string
+      } | null>
+      saveBackgroundImage: (base64Data: string, ext?: string) => Promise<string>
+      readBackgroundImage: (relPath: string) => Promise<string | null>
     }
   }
 }
@@ -23,6 +31,8 @@ export const useConfigStore = defineStore('config', () => {
   const config = ref<AppConfig>({ ...defaultConfig })
   const holidays = ref<string[]>([])
   const holidayEntries = ref<HolidayEntry[]>([])
+  /** 当前背景图的 data URL（图片模式时使用，color 模式为空） */
+  const backgroundUrl = ref<string>('')
   const loaded = ref(false)
 
   async function loadConfig(): Promise<void> {
@@ -31,6 +41,13 @@ export const useConfigStore = defineStore('config', () => {
       const entries = await window.catdown.getHolidays()
       holidayEntries.value = entries
       holidays.value = entries.map((h) => h.date)
+      // 加载背景图
+      if (config.value.background.mode === 'image' && config.value.background.imagePath) {
+        const url = await window.catdown.readBackgroundImage(config.value.background.imagePath)
+        backgroundUrl.value = url ?? ''
+      } else {
+        backgroundUrl.value = ''
+      }
       loaded.value = true
     } catch (err) {
       console.error('加载配置失败:', err)
@@ -57,5 +74,25 @@ export const useConfigStore = defineStore('config', () => {
     }
   }
 
-  return { config, holidays, holidayEntries, loaded, loadConfig, updateConfig, refreshHolidays }
+  /** 切换到图片模式后调用：读取图片为 data URL */
+  async function refreshBackgroundUrl(): Promise<void> {
+    if (config.value.background.mode === 'image' && config.value.background.imagePath) {
+      const url = await window.catdown.readBackgroundImage(config.value.background.imagePath)
+      backgroundUrl.value = url ?? ''
+    } else {
+      backgroundUrl.value = ''
+    }
+  }
+
+  return {
+    config,
+    holidays,
+    holidayEntries,
+    backgroundUrl,
+    loaded,
+    loadConfig,
+    updateConfig,
+    refreshHolidays,
+    refreshBackgroundUrl
+  }
 })

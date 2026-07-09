@@ -57,6 +57,35 @@ const api = {
    */
   resetHolidays(): Promise<HolidayEntry[]> {
     return ipcRenderer.invoke(IPC_CHANNELS.RESET_HOLIDAYS)
+  },
+
+  /**
+   * 选择背景图片（打开文件对话框，校验大小与格式）
+   * 返回 { path, size, dataUrl, ext } 或 null（用户取消）
+   */
+  selectBackgroundImage(): Promise<{
+    path: string
+    size: number
+    dataUrl: string
+    ext: string
+  } | null> {
+    return ipcRenderer.invoke(IPC_CHANNELS.BG_SELECT_IMAGE)
+  },
+
+  /**
+   * 保存裁剪后的图片（base64）到 userData/bg/
+   * 返回相对路径，例如 'background.png'
+   */
+  saveBackgroundImage(base64Data: string, ext?: string): Promise<string> {
+    return ipcRenderer.invoke(IPC_CHANNELS.BG_SAVE_IMAGE, base64Data, ext)
+  },
+
+  /**
+   * 读取背景图为 data URL（可直接用于 <img> / background-image）
+   * 文件不存在返回 null
+   */
+  readBackgroundImage(relPath: string): Promise<string | null> {
+    return ipcRenderer.invoke(IPC_CHANNELS.BG_READ_IMAGE, relPath)
   }
 }
 

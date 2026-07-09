@@ -29,6 +29,8 @@ export interface AppConfig {
   autoStart: boolean
   // 字体颜色（纯色或渐变）
   fontColor: FontColor
+  // 背景配置
+  background: BackgroundConfig
 }
 
 // ============ 字体颜色 / 渐变 ============
@@ -88,6 +90,28 @@ export const defaultFontColor: FontColor = {
   color: '#ffffff'
 }
 
+// ============ 背景 ============
+export type BackgroundMode = 'color' | 'image'
+
+export type CropRatio = '16:9' | '1:1' | 'free'
+
+export interface BackgroundConfig {
+  mode: BackgroundMode
+  /** 纯色模式颜色 */
+  color: string
+  /** 图片模式：相对于 userData 的图片文件路径（裁剪后的最终图） */
+  imagePath: string
+  /** 裁剪比例 */
+  cropRatio: CropRatio
+}
+
+export const defaultBackground: BackgroundConfig = {
+  mode: 'color',
+  color: '#667eea',
+  imagePath: '',
+  cropRatio: '16:9'
+}
+
 export const defaultConfig: AppConfig = {
   widgetName: '下班倒计时',
   workdays: [1, 2, 3, 4, 5],
@@ -104,7 +128,8 @@ export const defaultConfig: AppConfig = {
   showCat: true,
   minimalMode: false,
   autoStart: false,
-  fontColor: defaultFontColor
+  fontColor: defaultFontColor,
+  background: defaultBackground
 }
 
 // 时间目标事件类型
@@ -146,5 +171,8 @@ export const IPC_CHANNELS = {
   GET_HOLIDAYS: 'holidays:get',
   ADD_HOLIDAY: 'holidays:add',
   REMOVE_HOLIDAY: 'holidays:remove',
-  RESET_HOLIDAYS: 'holidays:reset'
+  RESET_HOLIDAYS: 'holidays:reset',
+  BG_SELECT_IMAGE: 'bg:selectImage',
+  BG_SAVE_IMAGE: 'bg:saveImage',
+  BG_READ_IMAGE: 'bg:readImage'
 } as const

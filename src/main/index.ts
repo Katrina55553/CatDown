@@ -3,6 +3,7 @@ import { join } from 'path'
 import { createTray, getTray } from './tray'
 import { loadConfig, saveConfig } from './config'
 import { loadHolidayEntries, loadHolidays, addHoliday, removeHoliday, resetHolidays } from './holidays'
+import { selectImageFile, saveCroppedImage, readImageAsDataURL } from './background'
 import { IPC_CHANNELS } from '../shared/types'
 import type { AppConfig } from '../shared/types'
 
@@ -94,6 +95,19 @@ function registerIpc(): void {
   })
   ipcMain.handle(IPC_CHANNELS.RESET_HOLIDAYS, () => {
     return resetHolidays()
+  })
+
+  // 背景图相关 IPC
+  ipcMain.handle(IPC_CHANNELS.BG_SELECT_IMAGE, async () => {
+    return await selectImageFile()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.BG_SAVE_IMAGE, (_event, base64Data: string, ext?: string) => {
+    return saveCroppedImage(base64Data, ext)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.BG_READ_IMAGE, (_event, relPath: string) => {
+    return readImageAsDataURL(relPath)
   })
 }
 

@@ -8,8 +8,9 @@ import { calculatePayday } from '@shared/payday'
 import { calculateFriday, findNextHoliday } from '@shared/auxiliary'
 import { fontColorToCssColor, sanitizeFontColor } from '@shared/font-color'
 import { defaultFontColor } from '@shared/types'
-import type { CountdownResult, IncomeResult, PaydayResult, FridayResult, NextHolidayResult, FontColor } from '@shared/types'
+import type { CountdownResult, IncomeResult, PaydayResult, FridayResult, NextHolidayResult, FontColor, BackgroundConfig } from '@shared/types'
 import ColorPicker from './components/ColorPicker.vue'
+import BackgroundPicker from './components/BackgroundPicker.vue'
 
 const configStore = useConfigStore()
 const countdown = ref<CountdownResult | null>(null)
@@ -81,6 +82,26 @@ const fontColorStyle = computed<CSSProperties>(() => {
 
 async function onFontColorChange(fc: FontColor): Promise<void> {
   await configStore.updateConfig({ fontColor: fc })
+}
+
+// 预览区背景样式
+const backgroundStyle = computed<CSSProperties>(() => {
+  const bg = configStore.config.background
+  if (bg.mode === 'image' && configStore.backgroundUrl) {
+    return {
+      backgroundImage: `url(${configStore.backgroundUrl})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat'
+    }
+  }
+  return { background: bg.color }
+})
+
+async function onBackgroundChange(bg: BackgroundConfig): Promise<void> {
+  await configStore.updateConfig({ background: bg })
+  // 切换/更新图片后，刷新 data URL
+  await configStore.refreshBackgroundUrl()
 }
 
 async function toggleWorkday(day: number): Promise<void> {
@@ -176,7 +197,7 @@ onUnmounted(() => {
 <template>
   <div class="catdown-app">
     <!-- 左侧预览区 -->
-    <div class="preview-panel">
+    <div class="preview-panel" :style="backgroundStyle">
       <div class="countdown-display" :style="fontColorStyle">{{ displayText }}</div>
 
       <!-- 今天收入卡片 -->
@@ -263,6 +284,15 @@ onUnmounted(() => {
         <ColorPicker
           :model-value="configStore.config.fontColor"
           @update:model-value="onFontColorChange"
+        />
+      </div>
+
+      <!-- 背景 -->
+      <div class="config-section">
+        <div class="config-label">背景</div>
+        <BackgroundPicker
+          :model-value="configStore.config.background"
+          @update:model-value="onBackgroundChange"
         />
       </div>
 

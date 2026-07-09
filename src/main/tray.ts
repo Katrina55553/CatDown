@@ -13,41 +13,30 @@ const FALLBACK_ICON_PNG = Buffer.from(
   'base64'
 )
 
+export interface TrayCallbacks {
+  onShowMainWindow: () => void
+  onToggleAutoStart: () => void
+  getAutoStart: () => boolean
+}
+
 /**
- * 创建系统托盘图标
- * @param onShowMainWindow 点击托盘图标时显示主窗口的回调
+ * 构建托盘右键菜单
  */
-export function createTray(onShowMainWindow: () => void): void {
-  const iconPath = join(app.getAppPath(), 'resources', 'tray-dark.png')
-
-  let icon: Electron.NativeImage
-  try {
-    icon = nativeImage.createFromPath(iconPath)
-    if (icon.isEmpty()) {
-      // 图标文件不存在时使用 data URL 占位图标
-      icon = nativeImage.createFromBuffer(FALLBACK_ICON_PNG)
-    }
-  } catch {
-    icon = nativeImage.createFromBuffer(FALLBACK_ICON_PNG)
-  }
-
-  // 缩放到托盘图标合适大小
-  const resizedIcon = icon.resize({ width: 16, height: 16 })
-
-  tray = new Tray(resizedIcon)
-  tray.setToolTip('CatDown - 下班倒计时')
-
-  // 左键点击显示主窗口
-  tray.on('click', () => {
-    onShowMainWindow()
-  })
-
-  // 右键菜单
-  const contextMenu = Menu.buildFromTemplate([
+function buildContextMenu(callbacks: TrayCallbacks): Electron.Menu {
+  return Menu.buildFromTemplate([
     {
       label: '显示主窗口',
-      click: (): void => {
-        onShowMainWindow()
+      click: (): void => callbacks.onShowMainWindow()
+    },
+    { type: 'separator' },
+    {
+      label: '开机自启',
+      type: 'checkbox',
+      checked: callbacks.getAutoStart(),
+      click: (menuItem): void => {
+        callbacks.onToggleAutoStart()
+        // 同步勾选状态
+        menuItem.checked = callbacks.getAutoStart()
       }
     },
     { type: 'separator' },
@@ -59,8 +48,43 @@ export function createTray(onShowMainWindow: () => void): void {
       }
     }
   ])
+}
 
-  tray.setContextMenu(contextMenu)
+/**
+ * 创建系统托盘图标
+ */
+export function createTray(callbacks: TrayCallbacks): void {
+  const iconPath = join(app.getAppPath(), 'resources', 'tray-dark.png')
+
+  let icon: Electron.NativeImage
+  try {
+    icon = nativeImage.createFromPath(iconPath)
+    if (icon.isEmpty()) {
+      icon = nativeImage.createFromBuffer(FALLBACK_ICON_PNG)
+    }
+  } catch {
+    icon = nativeImage.createFromBuffer(FALLBACK_ICON_PNG)
+  }
+
+  const resizedIcon = icon.resize({ width: 16, height: 16 })
+
+  tray = new Tray(resizedIcon)
+  tray.setToolTip('CatDown - 下班倒计时')
+
+  tray.on('click', () => {
+    callbacks.onShowMainWindow()
+  })
+
+  tray.setContextMenu(buildContextMenu(callbacks))
+}
+
+/**
+ * 刷新托盘菜单（开机自启状态变化后调用）
+ */
+export function refreshTrayMenu(callbacks: TrayCallbacks): void {
+  if (tray) {
+    tray.setContextMenu(buildContextMenu(callbacks))
+  }
 }
 
 export function getTray(): Tray | null {

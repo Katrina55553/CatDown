@@ -113,6 +113,10 @@ async function toggleMinimalMode(): Promise<void> {
   await configStore.updateConfig({ minimalMode: !configStore.config.minimalMode })
 }
 
+async function toggleAutoStart(): Promise<void> {
+  await configStore.updateConfig({ autoStart: !configStore.config.autoStart })
+}
+
 async function toggleWorkday(day: number): Promise<void> {
   const workdays = [...configStore.config.workdays]
   const idx = workdays.indexOf(day)
@@ -414,6 +418,14 @@ onUnmounted(() => {
             @change="toggleMinimalMode"
           />
           <span>极简模式（隐藏配置面板）</span>
+        </label>
+        <label class="checkbox-row" style="margin-top: 6px;">
+          <input
+            type="checkbox"
+            :checked="configStore.config.autoStart"
+            @change="toggleAutoStart"
+          />
+          <span>开机自启</span>
         </label>
       </div>
     </div>

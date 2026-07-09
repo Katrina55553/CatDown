@@ -1,9 +1,11 @@
 import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import { join } from 'path'
-import { createTray, getTray } from './tray'
+import { createTray, getTray, refreshTrayMenu } from './tray'
+import type { TrayCallbacks } from './tray'
 import { loadConfig, saveConfig } from './config'
 import { loadHolidayEntries, loadHolidays, addHoliday, removeHoliday, resetHolidays } from './holidays'
 import { selectImageFile, saveCroppedImage, readImageAsDataURL } from './background'
+import { syncAutoStart } from './auto-start'
 import { IPC_CHANNELS } from '../shared/types'
 import type { AppConfig } from '../shared/types'
 
@@ -65,6 +67,21 @@ function showMainWindow(): void {
   }
 }
 
+/** 切换开机自启：更新配置 + 同步系统 + 刷新托盘菜单 */
+function toggleAutoStart(): void {
+  const current = loadConfig()
+  const newValue = !current.autoStart
+  saveConfig({ ...current, autoStart: newValue })
+  syncAutoStart(newValue)
+  refreshTrayMenu(trayCallbacks)
+}
+
+const trayCallbacks: TrayCallbacks = {
+  onShowMainWindow: showMainWindow,
+  onToggleAutoStart: toggleAutoStart,
+  getAutoStart: () => loadConfig().autoStart
+}
+
 function registerIpc(): void {
   ipcMain.handle(IPC_CHANNELS.GET_CONFIG, () => {
     return loadConfig()
@@ -73,6 +90,10 @@ function registerIpc(): void {
     const current = loadConfig()
     const updated = { ...current, ...config }
     saveConfig(updated)
+    // 检测 autoStart 变化并同步到系统
+    if (config.autoStart !== undefined && config.autoStart !== current.autoStart) {
+      syncAutoStart(updated.autoStart)
+    }
     return updated
   })
   ipcMain.on(IPC_CHANNELS.SHOW_MAIN_WINDOW, () => {
@@ -113,13 +134,16 @@ function registerIpc(): void {
 
 app.whenReady().then(() => {
   // 确保配置文件存在
-  loadConfig()
+  const config = loadConfig()
+
+  // 同步开机自启状态
+  syncAutoStart(config.autoStart)
 
   // 创建主窗口
   createWindow()
 
   // 创建托盘
-  createTray(showMainWindow)
+  createTray(trayCallbacks)
 
   // 注册 IPC
   registerIpc()

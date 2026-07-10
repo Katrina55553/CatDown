@@ -97,12 +97,14 @@ export const defaultFontColor: FontColor = {
 }
 
 // ============ 背景 ============
-export type BackgroundMode = 'color' | 'image'
+export type BackgroundMode = 'preset' | 'color' | 'image'
 
 export type CropRatio = '16:9' | '1:1' | 'free'
 
 export interface BackgroundConfig {
   mode: BackgroundMode
+  /** 预设模式：预设背景 id（找不到时回退到默认预设） */
+  presetId: string
   /** 纯色模式颜色 */
   color: string
   /** 图片模式：相对于 userData 的图片文件路径（裁剪后的最终图） */
@@ -112,7 +114,8 @@ export interface BackgroundConfig {
 }
 
 export const defaultBackground: BackgroundConfig = {
-  mode: 'color',
+  mode: 'preset',
+  presetId: 'aurora',
   color: '#ff7e8b',
   imagePath: '',
   cropRatio: '16:9'

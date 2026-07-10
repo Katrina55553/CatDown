@@ -3,6 +3,7 @@ import { join } from 'path'
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs'
 import { defaultConfig } from '../shared/types'
 import type { AppConfig } from '../shared/types'
+import { sanitizeBackground } from '../shared/background-presets'
 
 /**
  * 获取配置文件路径
@@ -27,7 +28,10 @@ export function loadConfig(): AppConfig {
     const raw = readFileSync(configPath, 'utf-8')
     const parsed = JSON.parse(raw) as Partial<AppConfig>
     // 合并默认值，确保新增字段有默认值
-    return { ...defaultConfig, ...parsed }
+    const merged = { ...defaultConfig, ...parsed }
+    // 规整背景配置：补齐 presetId、迁移旧默认粉色到预设模式
+    merged.background = sanitizeBackground(merged.background)
+    return merged
   } catch (err) {
     // 配置损坏，回退到默认值
     console.error('配置文件解析失败，使用默认配置:', err)

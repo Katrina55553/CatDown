@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { BackgroundConfig, BackgroundMode, CropRatio } from '@shared/types'
+import { BACKGROUND_PRESETS } from '@shared/background-presets'
 import ImageCropper from './ImageCropper.vue'
 
 const props = defineProps<{ modelValue: BackgroundConfig }>()
@@ -24,6 +25,14 @@ function setColor(color: string): void {
 
 function setCropRatio(ratio: CropRatio): void {
   emit('update:modelValue', { ...props.modelValue, cropRatio: ratio })
+}
+
+function selectPreset(presetId: string): void {
+  emit('update:modelValue', {
+    ...props.modelValue,
+    mode: 'preset',
+    presetId
+  })
 }
 
 async function onSelectImage(): Promise<void> {
@@ -72,6 +81,11 @@ function onCancelCrop(): void {
     <div class="seg-control">
       <button
         class="seg-btn"
+        :class="{ active: modelValue.mode === 'preset' }"
+        @click="setMode('preset')"
+      >预设</button>
+      <button
+        class="seg-btn"
         :class="{ active: modelValue.mode === 'color' }"
         @click="setMode('color')"
       >颜色</button>
@@ -82,8 +96,23 @@ function onCancelCrop(): void {
       >图片</button>
     </div>
 
+    <!-- 预设画廊 -->
+    <div v-if="modelValue.mode === 'preset'" class="preset-gallery">
+      <button
+        v-for="preset in BACKGROUND_PRESETS"
+        :key="preset.id"
+        class="preset-thumb"
+        :class="{ active: modelValue.presetId === preset.id }"
+        :style="{ background: preset.background }"
+        :title="preset.description"
+        @click="selectPreset(preset.id)"
+      >
+        <span class="preset-name">{{ preset.name }}</span>
+      </button>
+    </div>
+
     <!-- 颜色模式 -->
-    <div v-if="modelValue.mode === 'color'" class="color-row">
+    <div v-else-if="modelValue.mode === 'color'" class="color-row">
       <input
         type="color"
         class="color-input"
@@ -166,6 +195,56 @@ function onCancelCrop(): void {
 .seg-btn.active {
   background: #667eea;
   color: #ffffff;
+}
+
+/* 预设画廊 */
+.preset-gallery {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.preset-thumb {
+  position: relative;
+  height: 56px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  overflow: hidden;
+  padding: 0;
+  background-size: cover;
+  background-position: center;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.preset-thumb:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+}
+
+.preset-thumb.active {
+  border-color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(255, 154, 139, 0.6);
+}
+
+.preset-name {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 3px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #ffffff;
+  text-align: left;
+  letter-spacing: 0.5px;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.55) 0%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  pointer-events: none;
 }
 
 .color-row {

@@ -1,6 +1,6 @@
 {
   "name": "catdown",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "CatDown - Windows 桌面下班倒计时小部件",
   "main": "./out/main/index.js",
   "author": "Katrina55553",
@@ -18,8 +18,8 @@
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "vue-tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "node scripts/test.cjs",
+    "test:watch": "node scripts/test.cjs --watch"
   },
   "dependencies": {
     "cropperjs": "^1.6.2",
@@ -28,6 +28,7 @@
     "vue": "^3.5.13"
   },
   "devDependencies": {
+    "@rolldown/binding-win32-x64-msvc": "^1.1.5",
     "@vitejs/plugin-vue": "^5.2.1",
     "electron": "^33.2.1",
     "electron-builder": "^26.15.3",
@@ -54,7 +55,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "artifactName": "CatDown-${version}-${arch}-setup.exe"

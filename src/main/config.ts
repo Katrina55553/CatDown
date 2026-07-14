@@ -1,60 +1,45 @@
-import { app } from 'electron'
-import { join } from 'path'
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs'
 import { defaultConfig } from '../shared/types'
 import type { AppConfig } from '../shared/types'
 import { sanitizeBackground } from '../shared/background-presets'
+import { readJson, writeJson, getUserDataPath } from './json-store'
+
+const CONFIG_FILENAME = 'config.json'
+
+/** 判断解析结果是否为合法的（部分）配置对象 */
+function isConfigLike(parsed: unknown): boolean {
+  return typeof parsed === 'object' && parsed !== null
+}
+
+/** 合并默认值并规整背景配置（补齐 presetId、迁移旧默认粉色到预设模式） */
+function sanitizeConfig(parsed: unknown): AppConfig {
+  const merged = { ...defaultConfig, ...(parsed as Partial<AppConfig>) }
+  merged.background = sanitizeBackground(merged.background)
+  return merged
+}
 
 /**
  * 获取配置文件路径
  */
 export function getConfigPath(): string {
-  return join(app.getPath('userData'), 'config.json')
+  return getUserDataPath(CONFIG_FILENAME)
 }
 
 /**
- * 加载配置，不存在则创建默认配置
+ * 加载配置，不存在或损坏则创建/回退默认配置
  */
 export function loadConfig(): AppConfig {
-  const configPath = getConfigPath()
-
-  if (!existsSync(configPath)) {
-    // 首次启动，创建默认配置
-    saveConfig(defaultConfig)
-    return { ...defaultConfig }
-  }
-
-  try {
-    const raw = readFileSync(configPath, 'utf-8')
-    const parsed = JSON.parse(raw) as Partial<AppConfig>
-    // 合并默认值，确保新增字段有默认值
-    const merged = { ...defaultConfig, ...parsed }
-    // 规整背景配置：补齐 presetId、迁移旧默认粉色到预设模式
-    merged.background = sanitizeBackground(merged.background)
-    return merged
-  } catch (err) {
-    // 配置损坏，回退到默认值
-    console.error('配置文件解析失败，使用默认配置:', err)
-    saveConfig(defaultConfig)
-    return { ...defaultConfig }
-  }
+  return readJson<AppConfig>({
+    filename: CONFIG_FILENAME,
+    defaultValue: defaultConfig,
+    validate: isConfigLike,
+    sanitize: sanitizeConfig,
+    logLabel: '配置文件'
+  })
 }
 
 /**
  * 保存配置到本地文件
  */
 export function saveConfig(config: AppConfig): void {
-  const configPath = getConfigPath()
-  const dir = app.getPath('userData')
-
-  // 确保目录存在
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true })
-  }
-
-  try {
-    writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8')
-  } catch (err) {
-    console.error('配置文件保存失败:', err)
-  }
+  writeJson(CONFIG_FILENAME, config)
 }

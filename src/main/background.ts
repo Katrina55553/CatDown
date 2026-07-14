@@ -1,6 +1,7 @@
-import { app, dialog } from 'electron'
+import { dialog } from 'electron'
 import { join, extname } from 'path'
 import { existsSync, mkdirSync, writeFileSync, readFileSync, statSync } from 'fs'
+import { getUserDataDir } from './json-store'
 
 /** 图片最大 5MB */
 export const MAX_IMAGE_SIZE = 5 * 1024 * 1024
@@ -10,7 +11,7 @@ const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp']
 
 /** 背景图存储目录（userData/bg/） */
 function getBgDir(): string {
-  return join(app.getPath('userData'), 'bg')
+  return join(getUserDataDir(), 'bg')
 }
 
 /** 确保背景目录存在 */

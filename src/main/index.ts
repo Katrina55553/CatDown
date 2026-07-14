@@ -1,13 +1,13 @@
-import { app, BrowserWindow, shell, ipcMain } from 'electron'
+import { app, BrowserWindow, shell } from 'electron'
 import { join } from 'path'
-import { createTray, getTray, refreshTrayMenu } from './tray'
+import { createTray, refreshTrayMenu } from './tray'
 import type { TrayCallbacks } from './tray'
 import { loadConfig, saveConfig } from './config'
-import { loadHolidayEntries, loadHolidays, addHoliday, removeHoliday, resetHolidays } from './holidays'
-import { selectImageFile, saveCroppedImage, readImageAsDataURL } from './background'
 import { syncAutoStart } from './auto-start'
-import { IPC_CHANNELS } from '../shared/types'
-import type { AppConfig } from '../shared/types'
+import { registerConfigIpc } from './ipc/config-ipc'
+import { registerHolidayIpc } from './ipc/holiday-ipc'
+import { registerBackgroundIpc } from './ipc/background-ipc'
+import { registerWindowIpc } from './ipc/window-ipc'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -82,54 +82,12 @@ const trayCallbacks: TrayCallbacks = {
   getAutoStart: () => loadConfig().autoStart
 }
 
-function registerIpc(): void {
-  ipcMain.handle(IPC_CHANNELS.GET_CONFIG, () => {
-    return loadConfig()
-  })
-  ipcMain.handle(IPC_CHANNELS.SET_CONFIG, (_event, config: Partial<AppConfig>) => {
-    const current = loadConfig()
-    const updated = { ...current, ...config }
-    saveConfig(updated)
-    // 检测 autoStart 变化并同步到系统
-    if (config.autoStart !== undefined && config.autoStart !== current.autoStart) {
-      syncAutoStart(updated.autoStart)
-    }
-    return updated
-  })
-  ipcMain.on(IPC_CHANNELS.SHOW_MAIN_WINDOW, () => {
-    showMainWindow()
-  })
-  ipcMain.on(IPC_CHANNELS.QUIT_APP, () => {
-    getTray()?.destroy()
-    app.quit()
-  })
-
-  // 节假日相关 IPC
-  ipcMain.handle(IPC_CHANNELS.GET_HOLIDAYS, () => {
-    return loadHolidayEntries()
-  })
-  ipcMain.handle(IPC_CHANNELS.ADD_HOLIDAY, (_event, date: string, name: string) => {
-    return addHoliday(date, name)
-  })
-  ipcMain.handle(IPC_CHANNELS.REMOVE_HOLIDAY, (_event, date: string) => {
-    return removeHoliday(date)
-  })
-  ipcMain.handle(IPC_CHANNELS.RESET_HOLIDAYS, () => {
-    return resetHolidays()
-  })
-
-  // 背景图相关 IPC
-  ipcMain.handle(IPC_CHANNELS.BG_SELECT_IMAGE, async () => {
-    return await selectImageFile()
-  })
-
-  ipcMain.handle(IPC_CHANNELS.BG_SAVE_IMAGE, (_event, base64Data: string, ext?: string) => {
-    return saveCroppedImage(base64Data, ext)
-  })
-
-  ipcMain.handle(IPC_CHANNELS.BG_READ_IMAGE, (_event, relPath: string) => {
-    return readImageAsDataURL(relPath)
-  })
+/** 注册全部 IPC（按功能拆分到 ipc/ 子模块） */
+function registerAllIpc(): void {
+  registerConfigIpc()
+  registerHolidayIpc()
+  registerBackgroundIpc()
+  registerWindowIpc(showMainWindow)
 }
 
 app.whenReady().then(() => {
@@ -146,7 +104,7 @@ app.whenReady().then(() => {
   createTray(trayCallbacks)
 
   // 注册 IPC
-  registerIpc()
+  registerAllIpc()
 })
 
 // macOS 激活时重新创建窗口

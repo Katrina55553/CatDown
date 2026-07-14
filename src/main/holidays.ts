@@ -1,12 +1,8 @@
-import { app } from 'electron'
-import { join } from 'path'
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs'
 import { defaultHolidays } from './default-holidays'
+import type { HolidayEntry } from '../shared/types'
+import { readJson, writeJson, getUserDataPath } from './json-store'
 
-export interface HolidayEntry {
-  date: string // "YYYY-MM-DD"
-  name: string
-}
+const HOLIDAYS_FILENAME = 'holidays.json'
 
 interface HolidayData {
   version: string
@@ -14,86 +10,49 @@ interface HolidayData {
   holidays: HolidayEntry[]
 }
 
+/** 校验解析结果是否含合法的 holidays 数组 */
+function isHolidayData(parsed: unknown): boolean {
+  if (typeof parsed !== 'object' || parsed === null) return false
+  const data = parsed as Partial<HolidayData>
+  return Array.isArray(data.holidays)
+}
+
 /**
  * 获取用户自定义节假日文件路径
  */
 export function getHolidayFilePath(): string {
-  return join(app.getPath('userData'), 'holidays.json')
+  return getUserDataPath(HOLIDAYS_FILENAME)
+}
+
+/** 读取节假日完整数据（合并内置与用户自定义），损坏时回退默认 */
+function loadHolidayData(): HolidayData {
+  return readJson<HolidayData>({
+    filename: HOLIDAYS_FILENAME,
+    defaultValue: defaultHolidays,
+    validate: isHolidayData,
+    logLabel: '节假日数据'
+  })
 }
 
 /**
- * 加载节假日数据
- * 合并内置数据与用户自定义数据
+ * 加载节假日日期列表
  */
 export function loadHolidays(): string[] {
-  const filePath = getHolidayFilePath()
-
-  // 如果用户文件不存在，从内置默认数据创建
-  if (!existsSync(filePath)) {
-    saveHolidayData(defaultHolidays)
-    return defaultHolidays.holidays.map((h) => h.date)
-  }
-
-  try {
-    const raw = readFileSync(filePath, 'utf-8')
-    const data = JSON.parse(raw) as HolidayData
-
-    if (!data.holidays || !Array.isArray(data.holidays)) {
-      // 数据损坏，回退到默认
-      saveHolidayData(defaultHolidays)
-      return defaultHolidays.holidays.map((h) => h.date)
-    }
-
-    return data.holidays.map((h) => h.date)
-  } catch (err) {
-    // 解析失败，回退到默认
-    console.error('节假日数据解析失败，使用默认数据:', err)
-    saveHolidayData(defaultHolidays)
-    return defaultHolidays.holidays.map((h) => h.date)
-  }
+  return loadHolidayData().holidays.map((h) => h.date)
 }
 
 /**
  * 加载节假日完整数据（含名称）
  */
 export function loadHolidayEntries(): HolidayEntry[] {
-  const filePath = getHolidayFilePath()
-
-  if (!existsSync(filePath)) {
-    saveHolidayData(defaultHolidays)
-    return defaultHolidays.holidays
-  }
-
-  try {
-    const raw = readFileSync(filePath, 'utf-8')
-    const data = JSON.parse(raw) as HolidayData
-    if (!data.holidays || !Array.isArray(data.holidays)) {
-      saveHolidayData(defaultHolidays)
-      return defaultHolidays.holidays
-    }
-    return data.holidays
-  } catch {
-    saveHolidayData(defaultHolidays)
-    return defaultHolidays.holidays
-  }
+  return loadHolidayData().holidays
 }
 
 /**
  * 保存节假日数据
  */
 export function saveHolidayData(data: HolidayData): void {
-  const filePath = getHolidayFilePath()
-  const dir = app.getPath('userData')
-
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true })
-  }
-
-  try {
-    writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8')
-  } catch (err) {
-    console.error('节假日数据保存失败:', err)
-  }
+  writeJson(HOLIDAYS_FILENAME, data)
 }
 
 /**

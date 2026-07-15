@@ -10,7 +10,13 @@ declare global {
       getConfig: () => Promise<AppConfig>
       setConfig: (config: Partial<AppConfig>) => Promise<AppConfig>
       showMainWindow: () => void
+      openSettings: () => void
       quitApp: () => void
+      togglePet: () => void
+      setPetInteractive: (interactive: boolean) => Promise<void>
+      movePet: (x: number, y: number) => Promise<void>
+      getPetPosition: () => Promise<{ x: number; y: number }>
+      savePetPosition: () => Promise<void>
       getHolidays: () => Promise<HolidayEntry[]>
       addHoliday: (date: string, name: string) => Promise<HolidayEntry[]>
       removeHoliday: (date: string) => Promise<HolidayEntry[]>

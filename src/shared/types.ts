@@ -37,6 +37,10 @@ export interface AppConfig {
   fontColor: FontColor
   // 背景配置
   background: BackgroundConfig
+  // 桌宠
+  petEnabled: boolean
+  petX: number
+  petY: number
 }
 
 // ============ 字体颜色 / 渐变 ============
@@ -140,7 +144,10 @@ export const defaultConfig: AppConfig = {
   minimalMode: false,
   autoStart: false,
   fontColor: defaultFontColor,
-  background: defaultBackground
+  background: defaultBackground,
+  petEnabled: true,
+  petX: -1,
+  petY: -1
 }
 
 // 时间目标事件类型
@@ -173,12 +180,21 @@ export type { PaydayResult } from './payday'
 // 辅助卡片计算结果（从 auxiliary.ts 重新导出）
 export type { FridayResult, NextHolidayResult } from './auxiliary'
 
+// 桌宠动画状态
+export type PetState = 'idle' | 'happy' | 'sleeping' | 'excited'
+
 // IPC 通道名称
 export const IPC_CHANNELS = {
   GET_CONFIG: 'config:get',
   SET_CONFIG: 'config:set',
   SHOW_MAIN_WINDOW: 'window:show',
   QUIT_APP: 'app:quit',
+  OPEN_SETTINGS: 'window:openSettings',
+  PET_TOGGLE: 'pet:toggle',
+  PET_SET_INTERACTIVE: 'pet:setInteractive',
+  PET_MOVE: 'pet:move',
+  PET_GET_POSITION: 'pet:getPosition',
+  PET_SAVE_POSITION: 'pet:savePosition',
   GET_HOLIDAYS: 'holidays:get',
   ADD_HOLIDAY: 'holidays:add',
   REMOVE_HOLIDAY: 'holidays:remove',

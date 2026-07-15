@@ -28,6 +28,13 @@ vi.mock('../background', () => ({
   readImageAsDataURL: vi.fn()
 }))
 vi.mock('../tray', () => ({ getTray: vi.fn() }))
+vi.mock('../pet-window', () => ({
+  togglePet: vi.fn(),
+  setPetInteractive: vi.fn(),
+  movePet: vi.fn(),
+  getPetPosition: vi.fn(() => ({ x: 0, y: 0 })),
+  savePetPosition: vi.fn()
+}))
 
 import { registerConfigIpc } from './config-ipc'
 import { registerHolidayIpc } from './holiday-ipc'
@@ -75,12 +82,20 @@ describe('IPC 注册接线', () => {
     expect(channels).toContain(IPC_CHANNELS.BG_READ_IMAGE)
   })
 
-  it('registerWindowIpc：注册 SHOW_MAIN_WINDOW 与 QUIT_APP（on）', () => {
+  it('registerWindowIpc：注册窗口与桌宠通道（on + handle）', () => {
     registerWindowIpc(() => {})
-    const channels = onChannels()
-    expect(channels).toContain(IPC_CHANNELS.SHOW_MAIN_WINDOW)
-    expect(channels).toContain(IPC_CHANNELS.QUIT_APP)
-    expect(handledChannels()).toHaveLength(0)
+    // on 通道：SHOW_MAIN_WINDOW, OPEN_SETTINGS, QUIT_APP, PET_TOGGLE
+    const onCh = onChannels()
+    expect(onCh).toContain(IPC_CHANNELS.SHOW_MAIN_WINDOW)
+    expect(onCh).toContain(IPC_CHANNELS.OPEN_SETTINGS)
+    expect(onCh).toContain(IPC_CHANNELS.QUIT_APP)
+    expect(onCh).toContain(IPC_CHANNELS.PET_TOGGLE)
+    // handle 通道：PET_SET_INTERACTIVE, PET_MOVE, PET_GET_POSITION, PET_SAVE_POSITION
+    const hCh = handledChannels()
+    expect(hCh).toContain(IPC_CHANNELS.PET_SET_INTERACTIVE)
+    expect(hCh).toContain(IPC_CHANNELS.PET_MOVE)
+    expect(hCh).toContain(IPC_CHANNELS.PET_GET_POSITION)
+    expect(hCh).toContain(IPC_CHANNELS.PET_SAVE_POSITION)
   })
 
   it('所有注册的通道名均在 IPC_CHANNELS 中定义（无硬编码魔法字符串）', () => {

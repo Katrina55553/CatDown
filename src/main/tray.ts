@@ -15,8 +15,10 @@ const FALLBACK_ICON_PNG = Buffer.from(
 
 export interface TrayCallbacks {
   onShowMainWindow: () => void
+  onTogglePet: () => void
   onToggleAutoStart: () => void
   getAutoStart: () => boolean
+  getPetEnabled: () => boolean
 }
 
 /**
@@ -25,7 +27,16 @@ export interface TrayCallbacks {
 function buildContextMenu(callbacks: TrayCallbacks): Electron.Menu {
   return Menu.buildFromTemplate([
     {
-      label: '显示主窗口',
+      label: '显示桌宠',
+      type: 'checkbox',
+      checked: callbacks.getPetEnabled(),
+      click: (menuItem): void => {
+        callbacks.onTogglePet()
+        menuItem.checked = callbacks.getPetEnabled()
+      }
+    },
+    {
+      label: '打开设置',
       click: (): void => callbacks.onShowMainWindow()
     },
     { type: 'separator' },

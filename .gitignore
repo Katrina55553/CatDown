@@ -35,3 +35,6 @@ pnpm-lock.yaml
 
 # gh CLI local config
 .gh-config/
+
+# Qoder IDE
+.qoder/

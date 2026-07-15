@@ -4,15 +4,16 @@ import { createTray, refreshTrayMenu } from './tray'
 import type { TrayCallbacks } from './tray'
 import { loadConfig, saveConfig } from './config'
 import { syncAutoStart } from './auto-start'
+import { createPetWindow, getPetWindow, togglePet, destroyPetWindow } from './pet-window'
 import { registerConfigIpc } from './ipc/config-ipc'
 import { registerHolidayIpc } from './ipc/holiday-ipc'
 import { registerBackgroundIpc } from './ipc/background-ipc'
 import { registerWindowIpc } from './ipc/window-ipc'
 
-let mainWindow: BrowserWindow | null = null
+let settingsWindow: BrowserWindow | null = null
 
-function createWindow(): void {
-  mainWindow = new BrowserWindow({
+function createSettingsWindow(): void {
+  settingsWindow = new BrowserWindow({
     width: 420,
     height: 600,
     show: false,
@@ -28,42 +29,38 @@ function createWindow(): void {
 
   // 开发环境加载 dev server，生产环境加载打包文件
   if (process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    settingsWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    settingsWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 
   // 阻止关闭，改为隐藏，保持托盘常驻
-  mainWindow.on('close', (e: Electron.Event) => {
+  settingsWindow.on('close', (e: Electron.Event) => {
     e.preventDefault()
-    mainWindow?.hide()
+    settingsWindow?.hide()
   })
 
-  mainWindow.on('closed', () => {
-    mainWindow = null
-  })
-
-  mainWindow.once('ready-to-show', () => {
-    mainWindow?.show()
+  settingsWindow.on('closed', () => {
+    settingsWindow = null
   })
 
   // 外部链接用系统浏览器打开
-  mainWindow.webContents.setWindowOpenHandler((details) => {
+  settingsWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
   })
 }
 
-function showMainWindow(): void {
-  if (mainWindow) {
-    if (mainWindow.isMinimized()) {
-      mainWindow.restore()
+function showSettingsWindow(): void {
+  if (!settingsWindow) {
+    createSettingsWindow()
+  }
+  if (settingsWindow) {
+    if (settingsWindow.isMinimized()) {
+      settingsWindow.restore()
     }
-    mainWindow.show()
-    mainWindow.focus()
-  } else {
-    // createWindow 内部 ready-to-show 事件会自动 show 窗口
-    createWindow()
+    settingsWindow.show()
+    settingsWindow.focus()
   }
 }
 
@@ -76,10 +73,20 @@ function toggleAutoStart(): void {
   refreshTrayMenu(trayCallbacks)
 }
 
+/** 切换桌宠显示/隐藏 */
+function handleTogglePet(): void {
+  togglePet()
+  const config = loadConfig()
+  const petWin = getPetWindow()
+  saveConfig({ ...config, petEnabled: petWin?.isVisible() ?? false })
+}
+
 const trayCallbacks: TrayCallbacks = {
-  onShowMainWindow: showMainWindow,
+  onShowMainWindow: showSettingsWindow,
+  onTogglePet: handleTogglePet,
   onToggleAutoStart: toggleAutoStart,
-  getAutoStart: () => loadConfig().autoStart
+  getAutoStart: () => loadConfig().autoStart,
+  getPetEnabled: () => loadConfig().petEnabled
 }
 
 /** 注册全部 IPC（按功能拆分到 ipc/ 子模块） */
@@ -87,7 +94,7 @@ function registerAllIpc(): void {
   registerConfigIpc()
   registerHolidayIpc()
   registerBackgroundIpc()
-  registerWindowIpc(showMainWindow)
+  registerWindowIpc(showSettingsWindow)
 }
 
 app.whenReady().then(() => {
@@ -97,8 +104,11 @@ app.whenReady().then(() => {
   // 同步开机自启状态
   syncAutoStart(config.autoStart)
 
-  // 创建主窗口
-  createWindow()
+  // 创建桌宠窗口（透明悬浮）
+  createPetWindow()
+
+  // 创建设置窗口（隐藏，按需显示）
+  createSettingsWindow()
 
   // 创建托盘
   createTray(trayCallbacks)
@@ -110,11 +120,17 @@ app.whenReady().then(() => {
 // macOS 激活时重新创建窗口
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow()
+    createPetWindow()
+    createSettingsWindow()
   }
 })
 
 // 所有窗口关闭时不退出（托盘常驻）
 app.on('window-all-closed', () => {
   // 不退出，保持托盘
+})
+
+// 退出前清理桌宠窗口
+app.on('before-quit', () => {
+  destroyPetWindow()
 })

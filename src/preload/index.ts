@@ -18,10 +18,17 @@ const api = {
   },
 
   /**
-   * 显示主窗口
+   * 显示设置窗口
    */
   showMainWindow(): void {
     ipcRenderer.send(IPC_CHANNELS.SHOW_MAIN_WINDOW)
+  },
+
+  /**
+   * 打开设置窗口（从桌宠调用）
+   */
+  openSettings(): void {
+    ipcRenderer.send(IPC_CHANNELS.OPEN_SETTINGS)
   },
 
   /**
@@ -29,6 +36,41 @@ const api = {
    */
   quitApp(): void {
     ipcRenderer.send(IPC_CHANNELS.QUIT_APP)
+  },
+
+  /**
+   * 切换桌宠显示/隐藏
+   */
+  togglePet(): void {
+    ipcRenderer.send(IPC_CHANNELS.PET_TOGGLE)
+  },
+
+  /**
+   * 设置桌宠是否可交互（关闭/开启点击穿透）
+   */
+  setPetInteractive(interactive: boolean): Promise<void> {
+    return ipcRenderer.invoke(IPC_CHANNELS.PET_SET_INTERACTIVE, interactive)
+  },
+
+  /**
+   * 移动桌宠到绝对屏幕坐标
+   */
+  movePet(x: number, y: number): Promise<void> {
+    return ipcRenderer.invoke(IPC_CHANNELS.PET_MOVE, x, y)
+  },
+
+  /**
+   * 获取桌宠当前屏幕坐标
+   */
+  getPetPosition(): Promise<{ x: number; y: number }> {
+    return ipcRenderer.invoke(IPC_CHANNELS.PET_GET_POSITION)
+  },
+
+  /**
+   * 保存桌宠当前位置到配置文件
+   */
+  savePetPosition(): Promise<void> {
+    return ipcRenderer.invoke(IPC_CHANNELS.PET_SAVE_POSITION)
   },
 
   /**

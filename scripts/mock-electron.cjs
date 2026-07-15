@@ -79,6 +79,12 @@ const nativeImage = {
   createEmpty: () => ({})
 }
 
+const screen = {
+  getPrimaryDisplay: () => ({
+    workArea: { x: 0, y: 0, width: 1920, height: 1080 }
+  })
+}
+
 module.exports = {
   app,
   ipcMain,
@@ -89,6 +95,7 @@ module.exports = {
   session,
   shell,
   nativeImage,
+  screen,
   // contextBridge / ipcRenderer 用于 preload 测试
   contextBridge: { exposeInMainWorld: () => {} },
   ipcRenderer: { invoke: () => Promise.resolve(), send: () => {}, on: () => {} }

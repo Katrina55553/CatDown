@@ -84,15 +84,15 @@ describe('IPC 注册接线', () => {
 
   it('registerWindowIpc：注册窗口与桌宠通道（on + handle）', () => {
     registerWindowIpc(() => {})
-    // on 通道：SHOW_MAIN_WINDOW, OPEN_SETTINGS, QUIT_APP, PET_TOGGLE
+    // on 通道：SHOW_MAIN_WINDOW, OPEN_SETTINGS, QUIT_APP, PET_TOGGLE, PET_SET_INTERACTIVE
     const onCh = onChannels()
     expect(onCh).toContain(IPC_CHANNELS.SHOW_MAIN_WINDOW)
     expect(onCh).toContain(IPC_CHANNELS.OPEN_SETTINGS)
     expect(onCh).toContain(IPC_CHANNELS.QUIT_APP)
     expect(onCh).toContain(IPC_CHANNELS.PET_TOGGLE)
-    // handle 通道：PET_SET_INTERACTIVE, PET_MOVE, PET_GET_POSITION, PET_SAVE_POSITION
+    expect(onCh).toContain(IPC_CHANNELS.PET_SET_INTERACTIVE)
+    // handle 通道：PET_MOVE, PET_GET_POSITION, PET_SAVE_POSITION
     const hCh = handledChannels()
-    expect(hCh).toContain(IPC_CHANNELS.PET_SET_INTERACTIVE)
     expect(hCh).toContain(IPC_CHANNELS.PET_MOVE)
     expect(hCh).toContain(IPC_CHANNELS.PET_GET_POSITION)
     expect(hCh).toContain(IPC_CHANNELS.PET_SAVE_POSITION)

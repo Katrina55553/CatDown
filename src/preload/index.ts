@@ -47,9 +47,10 @@ const api = {
 
   /**
    * 设置桌宠是否可交互（关闭/开启点击穿透）
+   * 使用 send 而非 invoke，避免 IPC 往返延迟
    */
-  setPetInteractive(interactive: boolean): Promise<void> {
-    return ipcRenderer.invoke(IPC_CHANNELS.PET_SET_INTERACTIVE, interactive)
+  setPetInteractive(interactive: boolean): void {
+    ipcRenderer.send(IPC_CHANNELS.PET_SET_INTERACTIVE, interactive)
   },
 
   /**

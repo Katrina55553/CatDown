@@ -13,7 +13,7 @@ declare global {
       openSettings: () => void
       quitApp: () => void
       togglePet: () => void
-      setPetInteractive: (interactive: boolean) => Promise<void>
+      setPetInteractive: (interactive: boolean) => void
       movePet: (x: number, y: number) => Promise<void>
       getPetPosition: () => Promise<{ x: number; y: number }>
       savePetPosition: () => Promise<void>

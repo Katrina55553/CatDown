@@ -38,7 +38,7 @@ export function registerWindowIpc(showSettingsWindow: () => void): void {
     togglePet()
   })
 
-  ipcMain.handle(IPC_CHANNELS.PET_SET_INTERACTIVE, (_event, interactive: boolean) => {
+  ipcMain.on(IPC_CHANNELS.PET_SET_INTERACTIVE, (_event, interactive: boolean) => {
     setPetInteractive(interactive)
   })
 

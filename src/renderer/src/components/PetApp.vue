@@ -48,14 +48,10 @@ let hoverTimer: ReturnType<typeof setTimeout> | null = null
 
 function onCatMouseEnter(): void {
   window.catdown.setPetInteractive(true)
-  window.catdown.getPetPosition().then((pos) => {
-    cachedWinX = pos.x
-    cachedWinY = pos.y
-  })
   if (hoverTimer) clearTimeout(hoverTimer)
   hoverTimer = setTimeout(() => {
     showBubble.value = true
-  }, 400)
+  }, 100)
 }
 
 function onCatMouseLeave(): void {
@@ -64,7 +60,7 @@ function onCatMouseLeave(): void {
   if (hoverTimer) clearTimeout(hoverTimer)
   hoverTimer = setTimeout(() => {
     showBubble.value = false
-  }, 200)
+  }, 100)
 }
 
 // ===== 拖拽 =====

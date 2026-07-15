@@ -97,6 +97,10 @@ function registerAllIpc(): void {
   registerWindowIpc(showSettingsWindow)
 }
 
+// 透明悬浮窗 + 多窗口会竞争 GPU 缓存导致 Windows "拒绝访问 (0x5)"，
+// 桌宠仅渲染 SVG/CSS，禁用硬件加速可彻底解决且无视觉影响
+app.disableHardwareAcceleration()
+
 app.whenReady().then(() => {
   // 确保配置文件存在
   const config = loadConfig()

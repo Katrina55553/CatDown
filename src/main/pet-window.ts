@@ -45,9 +45,7 @@ export function createPetWindow(): BrowserWindow {
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
-      contextIsolation: true,
-      // 独立 session 分区，避免与设置窗口竞争 GPU 缓存导致 "拒绝访问 (0x5)" 错误
-      partition: 'persist:pet'
+      contextIsolation: true
     }
   })
 

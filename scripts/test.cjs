@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Cross-platform test wrapper.
  * Node < 20: inject polyfills, then run vitest
  * Node >= 20: run vitest directly
@@ -44,5 +44,6 @@ var child = spawn(process.execPath, [vitestBinPath].concat(vitestArgs), {
 })
 
 child.on('exit', function(code) {
-  process.exit(code || 1)
+  // code === null 表示子进程被信号杀死，此时按失败处理
+  process.exit(code === null ? 1 : code)
 })

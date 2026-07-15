@@ -56,6 +56,8 @@ function onCatMouseEnter(): void {
 
 function onCatMouseLeave(): void {
   if (isDragging) return
+  // 右键菜单打开时不关闭交互，否则菜单项点击会穿透
+  if (showContextMenu.value) return
   window.catdown.setPetInteractive(false)
   if (hoverTimer) clearTimeout(hoverTimer)
   hoverTimer = setTimeout(() => {
@@ -112,6 +114,8 @@ const contextMenuY = ref(0)
 
 function onContextMenu(e: MouseEvent): void {
   e.preventDefault()
+  // 确保窗口可交互，否则菜单项点击会穿透
+  window.catdown.setPetInteractive(true)
   contextMenuX.value = e.clientX
   contextMenuY.value = e.clientY
   showContextMenu.value = true
@@ -119,6 +123,8 @@ function onContextMenu(e: MouseEvent): void {
 
 function closeContextMenu(): void {
   showContextMenu.value = false
+  // 关闭菜单后恢复点击穿透
+  window.catdown.setPetInteractive(false)
 }
 
 function openSettings(): void {

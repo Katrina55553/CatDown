@@ -1,38 +1,48 @@
-/**
- * Cross-platform test runner that sets up Node 16 polyfills before running vitest.
- *
- * vitest 4 / vite 8 require Node 20+, but the dev environment may have Node 16.
- * This wrapper injects polyfills via NODE_OPTIONS so `npm test` just works.
- *
- * On Node 20+ the polyfills are no-ops (all features already exist).
+﻿/**
+ * Cross-platform test wrapper.
+ * Node < 20: inject polyfills, then run vitest
+ * Node >= 20: run vitest directly
+ * Uses node to run vitest CLI entry, avoiding npx/.cmd/shell issues.
  */
 const { spawn } = require('child_process')
-const { resolve } = require('path')
+const { resolve, dirname } = require('path')
 const { pathToFileURL } = require('url')
 
 const root = resolve(__dirname, '..')
-const polyfill = resolve(__dirname, 'polyfill-node16.cjs')
-// --experimental-loader requires a file:// URL on Windows
-const loaderUrl = pathToFileURL(resolve(__dirname, 'util-loader.mjs')).href
 
-const env = { ...process.env }
-env.NODE_OPTIONS = [
-  `--require=${polyfill}`,
-  `--experimental-loader=${loaderUrl}`,
-  process.env.NODE_OPTIONS || ''
-].filter(Boolean).join(' ')
+var nodeMajor = parseInt(process.versions.node.split('.')[0], 10)
+var needsPolyfill = nodeMajor < 20
 
-// On Windows, npx is npx.cmd
-const cmd = process.platform === 'win32' ? 'npx.cmd' : 'npx'
-const extraArgs = process.argv.slice(2)
+var env = Object.assign({}, process.env)
 
-const child = spawn(cmd, ['vitest', 'run', ...extraArgs], {
+if (needsPolyfill) {
+  var polyfill = resolve(__dirname, 'polyfill-node16.cjs')
+  var loaderUrl = pathToFileURL(resolve(__dirname, 'util-loader.mjs')).href
+  env.NODE_OPTIONS = [
+    '--require=' + polyfill,
+    '--experimental-loader=' + loaderUrl,
+    process.env.NODE_OPTIONS || ''
+  ].filter(Boolean).join(' ')
+}
+
+var vitestPkgPath = require.resolve('vitest/package.json')
+var vitestPkg = require(vitestPkgPath)
+var binField = typeof vitestPkg.bin === 'string' ? vitestPkg.bin : (vitestPkg.bin.vitest || vitestPkg.bin.cli)
+var vitestBinPath = resolve(dirname(vitestPkgPath), binField)
+
+var extraArgs = process.argv.slice(2)
+var isWatch = extraArgs.indexOf('--watch') >= 0 || extraArgs.indexOf('-w') >= 0
+var vitestArgs = isWatch
+  ? extraArgs.filter(function(a) { return a !== '--watch' && a !== '-w' })
+  : ['run'].concat(extraArgs)
+
+var child = spawn(process.execPath, [vitestBinPath].concat(vitestArgs), {
   stdio: 'inherit',
   cwd: root,
-  env,
+  env: env,
   shell: false
 })
 
-child.on('exit', (code) => {
-  process.exit(code ?? 1)
+child.on('exit', function(code) {
+  process.exit(code || 1)
 })

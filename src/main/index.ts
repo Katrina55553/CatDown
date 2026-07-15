@@ -1,5 +1,6 @@
 import { app, BrowserWindow, shell } from 'electron'
 import { join } from 'path'
+import { rmSync } from 'fs'
 import { createTray, refreshTrayMenu } from './tray'
 import type { TrayCallbacks } from './tray'
 import { loadConfig, saveConfig } from './config'
@@ -98,10 +99,20 @@ function registerAllIpc(): void {
 }
 
 // 透明悬浮窗 + 多窗口会竞争 GPU 缓存导致 Windows "拒绝访问 (0x5)"，
-// 桌宠仅渲染 SVG/CSS，禁用硬件加速可彻底解决且无视觉影响
+// 彻底禁用 GPU 进程与所有 GPU 磁盘缓存
 app.disableHardwareAcceleration()
+app.commandLine.appendSwitch('disable-gpu')
+app.commandLine.appendSwitch('disable-gpu-shader-disk-cache')
+app.commandLine.appendSwitch('disable-gpu-program-cache')
+app.commandLine.appendSwitch('disable-software-rasterizer')
 
 app.whenReady().then(() => {
+  // 清理残留的 GPUCache 目录，避免旧缓存文件被锁导致 "Unable to move" 错误
+  try {
+    rmSync(join(app.getPath('userData'), 'GPUCache'), { recursive: true, force: true })
+  } catch {
+    // 忽略：目录不存在或无法删除
+  }
   // 确保配置文件存在
   const config = loadConfig()
 

@@ -1,6 +1,6 @@
 {
   "name": "catdown",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "CatDown - Windows 桌面下班倒计时小部件",
   "main": "./out/main/index.js",
   "author": "Katrina55553",

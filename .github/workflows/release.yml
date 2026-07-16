@@ -34,7 +34,14 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Package & Publish to GitHub Releases
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx electron-builder --win --publish always
+      - name: Package
+        run: npx electron-builder --win --publish never
+
+      - name: Release to GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/CatDown-*-setup.exe
+            release/CatDown-*-setup.exe.blockmap
+            release/latest.yml
+          draft: true
